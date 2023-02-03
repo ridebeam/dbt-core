@@ -223,16 +223,12 @@ class ManifestLoader:
     # This is where the main action happens
     def load(self):
         start_read_files = time.perf_counter()
-        # This is a dictionary of
-        project_parser_files = {}
-        saved_files = {}
-        if self.saved_manifest:
-            saved_files = self.saved_manifest.files
         # This updates the "files" dictionary in self.manifest, and creates
-        # the partial_parser_files dictionary (see read_files.py).
-        # Read files creates a dictionary of projects to a dictionary
+        # the partial_parser_files dictionary (see read_files.py),
+        # which is a dictionary of projects to a dictionary
         # of parsers to lists of file strings. The file strings are
         # used to get the SourceFiles from the manifest files.
+        saved_files = self.saved_manifest.files if self.saved_manifest else {}
         file_reader = ReadFilesFromFileSystem(
             all_projects=self.all_projects,
             files=self.manifest.files,
