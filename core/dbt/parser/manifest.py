@@ -44,7 +44,7 @@ from dbt.context.macro_resolver import MacroResolver, TestMacroNamespace
 from dbt.context.configured import generate_macro_context
 from dbt.context.providers import ParseProvider
 from dbt.contracts.files import FileHash, ParseFileType, SchemaSourceFile
-from dbt.parser.read_files import read_files, load_source_file
+from dbt.parser.read_files import ReadFilesFromFileSystem, load_source_file, FileDiff
 from dbt.parser.partial import PartialParsing, special_override_macros
 from dbt.contracts.graph.manifest import (
     Manifest,
@@ -148,6 +148,7 @@ class ManifestLoader:
         root_project: RuntimeConfig,
         all_projects: Mapping[str, Project],
         macro_hook: Optional[Callable[[Manifest], Any]] = None,
+        file_diff: Optional[FileDiff] = None,
     ) -> None:
         self.root_project: RuntimeConfig = root_project
         self.all_projects: Mapping[str, Project] = all_projects
@@ -185,6 +186,7 @@ class ManifestLoader:
         cls,
         config: RuntimeConfig,
         *,
+        file_diff: Optional[FileDiff] = None,
         reset: bool = False,
     ) -> Manifest:
 
@@ -220,17 +222,24 @@ class ManifestLoader:
 
     # This is where the main action happens
     def load(self):
-        # Read files creates a dictionary of projects to a dictionary
-        # of parsers to lists of file strings. The file strings are
-        # used to get the SourceFiles from the manifest files.
         start_read_files = time.perf_counter()
+        # This is a dictionary of
         project_parser_files = {}
         saved_files = {}
         if self.saved_manifest:
             saved_files = self.saved_manifest.files
-        for project in self.all_projects.values():
-            read_files(project, self.manifest.files, project_parser_files, saved_files)
-        orig_project_parser_files = project_parser_files
+        # This updates the "files" dictionary in self.manifest, and creates
+        # the partial_parser_files dictionary (see read_files.py).
+        # Read files creates a dictionary of projects to a dictionary
+        # of parsers to lists of file strings. The file strings are
+        # used to get the SourceFiles from the manifest files.
+        file_reader = ReadFilesFromFileSystem(
+            all_projects=self.all_projects,
+            files=self.manifest.files,
+            saved_files=saved_files,
+        )
+        file_reader.read_files()
+        project_parser_files = orig_project_parser_files = file_reader.project_parser_files
         self._perf_info.path_count = len(self.manifest.files)
         self._perf_info.read_files_elapsed = time.perf_counter() - start_read_files
 

@@ -1,6 +1,7 @@
 import os
 import pathspec  # type: ignore
 import pathlib
+from dataclasses import dataclass, field
 from dbt.clients.system import load_file_contents
 from dbt.contracts.files import (
     FilePath,
@@ -10,11 +11,29 @@ from dbt.contracts.files import (
     AnySourceFile,
     SchemaSourceFile,
 )
-
+from dbt.config import Project
 from dbt.parser.schemas import yaml_from_file, schema_file_keys, check_format_version
 from dbt.exceptions import ParsingError
 from dbt.parser.search import filesystem_search
-from typing import Optional
+from typing import Optional, Dict, List, Mapping
+
+
+@dataclass
+class InputFile:
+    path: str
+    contents: str
+
+
+@dataclass
+class ProjectFileDiff:
+    project_name: str
+    deleted_files: List[str]
+    changed_files: List
+
+
+@dataclass
+class FileDiff:
+    projects: List[ProjectFileDiff]
 
 
 # This loads the files contents and creates the SourceFile object
@@ -131,9 +150,10 @@ def get_source_files(project, paths, extension, parse_file_type, saved_files, ig
     return fb_list
 
 
-def read_files_for_parser(project, files, dirs, extensions, parse_ft, saved_files, ignore_spec):
+def read_files_for_parser(project, files, parse_ft, file_type_info, saved_files, ignore_spec):
+    dirs = file_type_info["paths"]
     parser_files = []
-    for extension in extensions:
+    for extension in file_type_info["extensions"]:
         source_files = get_source_files(
             project, dirs, extension, parse_ft, saved_files, ignore_spec
         )
@@ -153,104 +173,88 @@ def generate_dbt_ignore_spec(project_root):
     return ignore_spec
 
 
-# This needs to read files for multiple projects, so the 'files'
-# dictionary needs to be passed in. What determines the order of
-# the various projects? Is the root project always last? Do the
-# non-root projects need to be done separately in order?
-def read_files(project, files, parser_files, saved_files):
-    dbt_ignore_spec = generate_dbt_ignore_spec(project.project_root)
-    project_files = {}
+@dataclass
+class ReadFilesFromFileSystem:
+    all_projects: Mapping[str, Project]
+    # This is a reference to the "files" dictionary in the current manifest, so the
+    # manifest in implicitly updated by this code.
+    files: Dict[str, AnySourceFile]
+    # saved_files is only used to compare schema files
+    saved_files: Dict[str, AnySourceFile] = field(default_factory=dict)
+    # project_parser_files = {
+    #   "my_project": {
+    #     "ModelParser": ["my_project://models/my_model.sql"]
+    #   }
+    # }
+    #
+    project_parser_files: Dict = field(default_factory=dict)
 
-    project_files["MacroParser"] = read_files_for_parser(
-        project,
-        files,
-        project.macro_paths,
-        [".sql"],
-        ParseFileType.Macro,
-        saved_files,
-        dbt_ignore_spec,
-    )
+    def read_files(self):
+        for project in self.all_projects.values():
+            file_types = get_file_types_for_project(project)
+            self.read_files_for_project(project, file_types)
 
-    project_files["ModelParser"] = read_files_for_parser(
-        project,
-        files,
-        project.model_paths,
-        [".sql", ".py"],
-        ParseFileType.Model,
-        saved_files,
-        dbt_ignore_spec,
-    )
+    def read_files_for_project(self, project, file_types):
+        dbt_ignore_spec = generate_dbt_ignore_spec(project.project_root)
+        project_files = self.project_parser_files[project.project_name] = {}
 
-    project_files["SnapshotParser"] = read_files_for_parser(
-        project,
-        files,
-        project.snapshot_paths,
-        [".sql"],
-        ParseFileType.Snapshot,
-        saved_files,
-        dbt_ignore_spec,
-    )
+        for parse_ft, file_type_info in file_types.items():
+            project_files[file_type_info["parser"]] = read_files_for_parser(
+                project,
+                self.files,
+                parse_ft,
+                file_type_info,
+                self.saved_files,
+                dbt_ignore_spec,
+            )
 
-    project_files["AnalysisParser"] = read_files_for_parser(
-        project,
-        files,
-        project.analysis_paths,
-        [".sql"],
-        ParseFileType.Analysis,
-        saved_files,
-        dbt_ignore_spec,
-    )
 
-    project_files["SingularTestParser"] = read_files_for_parser(
-        project,
-        files,
-        project.test_paths,
-        [".sql"],
-        ParseFileType.SingularTest,
-        saved_files,
-        dbt_ignore_spec,
-    )
-
-    # all generic tests within /tests must be nested under a /generic subfolder
-    project_files["GenericTestParser"] = read_files_for_parser(
-        project,
-        files,
-        project.generic_test_paths,
-        [".sql"],
-        ParseFileType.GenericTest,
-        saved_files,
-        dbt_ignore_spec,
-    )
-
-    project_files["SeedParser"] = read_files_for_parser(
-        project,
-        files,
-        project.seed_paths,
-        [".csv"],
-        ParseFileType.Seed,
-        saved_files,
-        dbt_ignore_spec,
-    )
-
-    project_files["DocumentationParser"] = read_files_for_parser(
-        project,
-        files,
-        project.docs_paths,
-        [".md"],
-        ParseFileType.Documentation,
-        saved_files,
-        dbt_ignore_spec,
-    )
-
-    project_files["SchemaParser"] = read_files_for_parser(
-        project,
-        files,
-        project.all_source_paths,
-        [".yml", ".yaml"],
-        ParseFileType.Schema,
-        saved_files,
-        dbt_ignore_spec,
-    )
-
-    # Store the parser files for this particular project
-    parser_files[project.project_name] = project_files
+def get_file_types_for_project(project):
+    file_types = {
+        ParseFileType.Macro: {
+            "paths": project.macro_paths,
+            "extensions": [".sql"],
+            "parser": "MacroParser",
+        },
+        ParseFileType.Model: {
+            "paths": project.model_paths,
+            "extensions": [".sql", ".py"],
+            "parser": "ModelParser",
+        },
+        ParseFileType.Snapshot: {
+            "paths": project.snapshot_paths,
+            "extensions": [".sql"],
+            "parser": "SnapshotParser",
+        },
+        ParseFileType.Analysis: {
+            "paths": project.analysis_paths,
+            "extensions": [".sql"],
+            "parser": "AnalysisParser",
+        },
+        ParseFileType.SingularTest: {
+            "paths": project.test_paths,
+            "extensions": [".sql"],
+            "parser": "SingularTestParser",
+        },
+        ParseFileType.GenericTest: {
+            "paths": project.generic_test_paths,
+            "extensions": [".sql"],
+            "parser": "GenericTestParser",
+        },
+        ParseFileType.Seed: {
+            "paths": project.seed_paths,
+            "extensions": [".csv"],
+            "parser": "SeedParser",
+        },
+        ParseFileType.Documentation: {
+            "paths": project.docs_paths,
+            "extensions": [".md"],
+            "parser": "DocumentationParser",
+        },
+        ParseFileType.Schema: {
+            "paths": project.all_source_paths,
+            "extensions": [".yml", ".yaml"],
+            "parser": "SchemaParser",
+        },
+    }
+    return file_types
