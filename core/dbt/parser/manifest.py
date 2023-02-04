@@ -37,14 +37,19 @@ from dbt.logger import DbtProcessState
 from dbt.node_types import NodeType
 from dbt.clients.jinja import get_rendered, MacroStack
 from dbt.clients.jinja_static import statically_extract_macro_calls
-from dbt.clients.system import make_directory
+from dbt.clients.system import make_directory, path_exists, read_json
 from dbt.config import Project, RuntimeConfig
 from dbt.context.docs import generate_runtime_docs_context
 from dbt.context.macro_resolver import MacroResolver, TestMacroNamespace
 from dbt.context.configured import generate_macro_context
 from dbt.context.providers import ParseProvider
 from dbt.contracts.files import FileHash, ParseFileType, SchemaSourceFile
-from dbt.parser.read_files import ReadFilesFromFileSystem, load_source_file, FileDiff
+from dbt.parser.read_files import (
+    ReadFilesFromFileSystem,
+    load_source_file,
+    FileDiff,
+    ReadFilesFromDiff,
+)
 from dbt.parser.partial import PartialParsing, special_override_macros
 from dbt.contracts.graph.manifest import (
     Manifest,
@@ -152,6 +157,7 @@ class ManifestLoader:
     ) -> None:
         self.root_project: RuntimeConfig = root_project
         self.all_projects: Mapping[str, Project] = all_projects
+        self.file_diff = file_diff
         self.manifest: Manifest = Manifest()
         self.new_manifest = self.manifest
         self.manifest.metadata = root_project.get_metadata()
@@ -198,12 +204,19 @@ class ManifestLoader:
             adapter.clear_macro_manifest()
         macro_hook = adapter.connections.set_query_header
 
+        # Hack to test file_diffs
+        if os.environ.get("DBT_PP_FILE_DIFF_TEST"):
+            file_diff_path = "file_diff.json"
+            if path_exists(file_diff_path):
+                file_diff_dct = read_json(file_diff_path)
+                file_diff = FileDiff.from_dict(file_diff_dct)
+
         with PARSING_STATE:  # set up logbook.Processor for parsing
             # Start performance counting
             start_load_all = time.perf_counter()
 
             projects = config.load_dependencies()
-            loader = cls(config, projects, macro_hook)
+            loader = cls(config, projects, macro_hook=macro_hook, file_diff=file_diff)
 
             manifest = loader.load()
 
@@ -223,18 +236,33 @@ class ManifestLoader:
     # This is where the main action happens
     def load(self):
         start_read_files = time.perf_counter()
+
         # This updates the "files" dictionary in self.manifest, and creates
         # the partial_parser_files dictionary (see read_files.py),
         # which is a dictionary of projects to a dictionary
         # of parsers to lists of file strings. The file strings are
         # used to get the SourceFiles from the manifest files.
         saved_files = self.saved_manifest.files if self.saved_manifest else {}
-        file_reader = ReadFilesFromFileSystem(
-            all_projects=self.all_projects,
-            files=self.manifest.files,
-            saved_files=saved_files,
-        )
+        if self.file_diff:
+            # We're getting files from a file diff
+            file_reader = ReadFilesFromDiff(
+                all_projects=self.all_projects,
+                files=self.manifest.files,
+                saved_files=saved_files,
+                root_project_name=self.root_project.project_name,
+                file_diff=self.file_diff,
+            )
+        else:
+            # We're getting files from a file_diff structure
+            file_reader = ReadFilesFromFileSystem(
+                all_projects=self.all_projects,
+                files=self.manifest.files,
+                saved_files=saved_files,
+            )
+
+        # Set the files in the manifest and save the project_parser_files
         file_reader.read_files()
+        self.manifest.files = file_reader.files
         project_parser_files = orig_project_parser_files = file_reader.project_parser_files
         self._perf_info.path_count = len(self.manifest.files)
         self._perf_info.read_files_elapsed = time.perf_counter() - start_read_files

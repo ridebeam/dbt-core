@@ -12,6 +12,7 @@ from dbt.contracts.files import (
     SchemaSourceFile,
 )
 from dbt.config import Project
+from dbt.dataclass_schema import dbtClassMixin
 from dbt.parser.schemas import yaml_from_file, schema_file_keys, check_format_version
 from dbt.exceptions import ParsingError
 from dbt.parser.search import filesystem_search
@@ -21,17 +22,17 @@ from dbt.events.functions import fire_event
 
 
 @dataclass
-class InputFile:
+class InputFile(dbtClassMixin):
     path: str
-    contents: str
-    modification_time: Optional[float] = None
+    content: str
+    modification_time: float = 0.0
 
 
 @dataclass
-class FileDiff:
-    deleted_files: List[str]
-    changed_files: List[InputFile]
-    added_files: List[InputFile]
+class FileDiff(dbtClassMixin):
+    deleted: List[str]
+    changed: List[InputFile]
+    added: List[InputFile]
 
 
 # This loads the files contents and creates the SourceFile object
@@ -176,7 +177,7 @@ class ReadFilesFromFileSystem:
     all_projects: Mapping[str, Project]
     # This is a reference to the "files" dictionary in the current manifest, so the
     # manifest in implicitly updated by this code.
-    files: Dict[str, AnySourceFile]
+    files: Dict[str, AnySourceFile] = field(default_factory=dict)
     # saved_files is only used to compare schema files
     saved_files: Dict[str, AnySourceFile] = field(default_factory=dict)
     # project_parser_files = {
@@ -211,14 +212,14 @@ class ReadFilesFromFileSystem:
 class ReadFilesFromDiff:
     root_project_name: str
     all_projects: Mapping[str, Project]
-    files: Dict[str, AnySourceFile]
     file_diff: FileDiff
+    files: Dict[str, AnySourceFile] = field(default_factory=dict)
     # Is saved_files required? Could a file diff contain the entire project?
     saved_files: Dict[str, AnySourceFile] = field(default_factory=dict)
     project_parser_files: Dict = field(default_factory=dict)
     project_file_types: Dict = field(default_factory=dict)
 
-    def build_files(self):
+    def read_files(self):
         # Copy the base file information from the existing manifest.
         # We will do deletions, adds, changes from the file_diff to emulate
         # a complete read of the project file system.
@@ -255,8 +256,8 @@ class ReadFilesFromDiff:
             if file_id in self.files:
                 # Get the existing source_file object and update the contents and mod time
                 source_file = self.files[file_id]
-                source_file.contents = input_file.contents
-                source_file.checksum = FileHash.from_contents(input_file.contents)
+                source_file.contents = input_file.content
+                source_file.checksum = FileHash.from_contents(input_file.content)
                 source_file.path.modification_time = input_file.modification_time
                 # Handle creation of dictionary version of schema file content
                 if isinstance(source_file, SchemaSourceFile) and source_file.contents:
@@ -275,18 +276,18 @@ class ReadFilesFromDiff:
             #   modification_time  float, default 0.0...
             #   project_root
             # We use PurePath because there's no actual filesystem to look at
-            pure_path = pathlib.PurePath(input_file["path"])
-            extension = pure_path.suffix
-            searched_path = pure_path.parts[0]
+            input_file_path = pathlib.PurePath(input_file.path)
+            extension = input_file_path.suffix
+            searched_path = input_file_path.parts[0]
             # check what happens with generic tests... searched_path/relative_path
 
-            relative_path_parts = pure_path.parts[1:]
-            relative_path = pathlib.PurePath.joinpaths(relative_path_parts)
+            relative_path_parts = input_file_path.parts[1:]
+            relative_path = pathlib.PurePath("").joinpath(*relative_path_parts)
             # Create FilePath object
             input_file_path = FilePath(
                 searched_path=searched_path,
-                relative_path=relative_path,
-                modification_time=input_file["modification_time"],
+                relative_path=str(relative_path),
+                modification_time=input_file.modification_time,
                 project_root=self.all_projects[project_name].project_root,
             )
 
@@ -301,7 +302,7 @@ class ReadFilesFromDiff:
             if len(parse_ft_for_extension) == 0 or len(parse_ft_for_path) == 0:
                 fire_event(InputFileDiffError(category="not a project file", file_id=file_id))
                 continue
-            parse_ft_set = parse_ft_for_extension.intersetion(parse_ft_for_path)
+            parse_ft_set = parse_ft_for_extension.intersection(parse_ft_for_path)
             if (
                 len(parse_ft_set) != 1
             ):  # There should only be one result for a path/extension combination
@@ -317,8 +318,8 @@ class ReadFilesFromDiff:
                 source_file_cls = SchemaSourceFile
             source_file = source_file_cls(
                 path=input_file_path,
-                contents=input_file.contents,
-                checksum=FileHash.from_contents(input_file.contents),
+                contents=input_file.content,
+                checksum=FileHash.from_contents(input_file.content),
                 project_name=project_name,
                 parse_file_type=parse_ft,
             )
@@ -346,10 +347,11 @@ class ReadFilesFromDiff:
             }
         file_types = self.project_file_types[project_name]["file_types"]
         file_type_lookup = self.project_file_types[project_name]["file_type_lookup"]
+        return (file_types, file_type_lookup)
 
     def get_file_type_lookup(self, file_types):
         file_type_lookup = {"paths": {}, "extensions": {}}
-        for parse_ft, file_type in file_types:
+        for parse_ft, file_type in file_types.items():
             for path in file_type["paths"]:
                 if path not in file_type_lookup["paths"]:
                     file_type_lookup["paths"][path] = set()
