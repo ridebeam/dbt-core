@@ -777,6 +777,15 @@ class ParseCmdOut(InfoLevel, pt.ParseCmdOut):
         return self.msg
 
 
+@dataclass
+class InputFileDiffError(DebugLevel, pt.InputFileDiffError):
+    def code(self):
+        return "I002"
+
+    def message(self) -> str:
+        return f"Error process file diff: {self.category}, {self.file_id}"
+
+
 # Skipping I002, I003, I004, I005, I006, I007, I008, I009, I010
 
 
@@ -1873,13 +1882,7 @@ class MainStackTrace(ErrorLevel, pt.MainStackTrace):
         return self.stack_trace
 
 
-@dataclass
-class SystemErrorRetrievingModTime(ErrorLevel, pt.SystemErrorRetrievingModTime):
-    def code(self):
-        return "Z004"
-
-    def message(self) -> str:
-        return f"Error retrieving modification time for file {self.path}"
+# Skipped Z004
 
 
 @dataclass

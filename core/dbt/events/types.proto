@@ -773,6 +773,17 @@ message ParseCmdOutMsg {
     ParseCmdOut data = 2;
 }
 
+// I002
+message InputFileDiffError {
+    string category = 1;
+    string file_id = 2;
+}
+
+message InputFileDiffErrorMsg {
+    EventInfo info = 1;
+    InputFileDiffError data = 2;
+}
+
 // Skipping I002, I003, I004, I005, I006, I007, I008, I009, I010
 
 
@@ -1787,15 +1798,7 @@ message MainStackTraceMsg {
     MainStackTrace data = 2;
 }
 
-// Z004
-message SystemErrorRetrievingModTime {
-    string path = 1;
-}
-
-message SystemErrorRetrievingModTimeMsg {
-    EventInfo info = 1;
-    SystemErrorRetrievingModTime data = 2;
-}
+// Skipped Z004
 
 // Z005
 message SystemCouldNotWrite {

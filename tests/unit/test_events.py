@@ -336,7 +336,6 @@ sample_values = [
     MainKeyboardInterrupt(),
     MainEncounteredError(exc=""),
     MainStackTrace(stack_trace=""),
-    SystemErrorRetrievingModTime(path=""),
     SystemCouldNotWrite(path="", reason="", exc=""),
     SystemExecutingCmd(cmd=[""]),
     SystemStdOut(bmsg=b""),

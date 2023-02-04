@@ -976,6 +976,20 @@ class ParseCmdOutMsg(betterproto.Message):
 
 
 @dataclass
+class InputFileDiffError(betterproto.Message):
+    """I002"""
+
+    category: str = betterproto.string_field(1)
+    file_id: str = betterproto.string_field(2)
+
+
+@dataclass
+class InputFileDiffErrorMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "InputFileDiffError" = betterproto.message_field(2)
+
+
+@dataclass
 class GenericTestFileParse(betterproto.Message):
     """I011"""
 
@@ -2222,19 +2236,6 @@ class MainStackTrace(betterproto.Message):
 class MainStackTraceMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     data: "MainStackTrace" = betterproto.message_field(2)
-
-
-@dataclass
-class SystemErrorRetrievingModTime(betterproto.Message):
-    """Z004"""
-
-    path: str = betterproto.string_field(1)
-
-
-@dataclass
-class SystemErrorRetrievingModTimeMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "SystemErrorRetrievingModTime" = betterproto.message_field(2)
 
 
 @dataclass
