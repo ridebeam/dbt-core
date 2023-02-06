@@ -9,6 +9,13 @@ first_file_diff = {
 }
 
 
+second_file_diff = {
+    "deleted": [],
+    "changed": [],
+    "added": [{"path": "models/model_two.sql", "content": "select 123 as notfun"}],
+}
+
+
 class TestFileDiffs:
     def test_file_diffs(self, project):
 
@@ -20,3 +27,7 @@ class TestFileDiffs:
         write_artifact(first_file_diff, "file_diff.json")
         results = run_dbt()
         assert len(results) == 1
+
+        write_artifact(second_file_diff, "file_diff.json")
+        results = run_dbt()
+        assert len(results) == 2
