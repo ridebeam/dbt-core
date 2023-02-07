@@ -783,7 +783,7 @@ class InputFileDiffError(DebugLevel, pt.InputFileDiffError):
         return "I002"
 
     def message(self) -> str:
-        return f"Error process file diff: {self.category}, {self.file_id}"
+        return f"Error processing file diff: {self.category}, {self.file_id}"
 
 
 # Skipping I002, I003, I004, I005, I006, I007, I008, I009, I010

@@ -178,6 +178,7 @@ sample_values = [
     FinishedRunningStats(stat_line="", execution="", execution_time=0),
     # I - Project parsing ======================
     ParseCmdOut(msg="testing"),
+    InputFileDiffError(category="failed"),
     GenericTestFileParse(path=""),
     MacroFileParse(path=""),
     PartialParsingErrorProcessingFile(file=""),

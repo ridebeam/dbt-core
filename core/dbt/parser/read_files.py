@@ -31,6 +31,8 @@ class InputFile(dbtClassMixin):
 @dataclass
 class FileDiff(dbtClassMixin):
     deleted: List[str]
+    # Note: it would be possible to not distinguish between
+    # added and changed files, but we would lose some error handling.
     changed: List[InputFile]
     added: List[InputFile]
 
@@ -68,16 +70,14 @@ def load_source_file(
 
     if not skip_loading_schema_file:
         file_contents = load_file_contents(path.absolute_path, strip=False)
-        source_file.checksum = FileHash.from_contents(file_contents)
         source_file.contents = file_contents.strip()
+        source_file.checksum = FileHash.from_contents(source_file.contents)
 
     if parse_file_type == ParseFileType.Schema and source_file.contents:
         dfy = yaml_from_file(source_file)
         if dfy:
             validate_yaml(source_file.path.original_file_path, dfy)
             source_file.dfy = dfy
-        else:
-            source_file = None
     return source_file
 
 
@@ -175,8 +175,6 @@ def generate_dbt_ignore_spec(project_root):
 @dataclass
 class ReadFilesFromFileSystem:
     all_projects: Mapping[str, Project]
-    # This is a reference to the "files" dictionary in the current manifest, so the
-    # manifest in implicitly updated by this code.
     files: Dict[str, AnySourceFile] = field(default_factory=dict)
     # saved_files is only used to compare schema files
     saved_files: Dict[str, AnySourceFile] = field(default_factory=dict)
@@ -214,7 +212,8 @@ class ReadFilesFromDiff:
     all_projects: Mapping[str, Project]
     file_diff: FileDiff
     files: Dict[str, AnySourceFile] = field(default_factory=dict)
-    # Is saved_files required? Could a file diff contain the entire project?
+    # saved_files is used to construct a fresh copy of files, without
+    # additional information from parsing
     saved_files: Dict[str, AnySourceFile] = field(default_factory=dict)
     project_parser_files: Dict = field(default_factory=dict)
     project_file_types: Dict = field(default_factory=dict)
