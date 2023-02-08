@@ -11,6 +11,7 @@ from dbt.contracts.files import (
     AnySourceFile,
     SchemaSourceFile,
 )
+from dbt.contracts.project import LocalPackage
 from dbt.config import Project
 from dbt.dataclass_schema import dbtClassMixin
 from dbt.parser.schemas import yaml_from_file, schema_file_keys, check_format_version
@@ -217,6 +218,7 @@ class ReadFilesFromDiff:
     saved_files: Dict[str, AnySourceFile] = field(default_factory=dict)
     project_parser_files: Dict = field(default_factory=dict)
     project_file_types: Dict = field(default_factory=dict)
+    local_package_dirs: Optional[List[str]] = None
 
     def read_files(self):
         # Copy the base file information from the existing manifest.
@@ -333,9 +335,24 @@ class ReadFilesFromDiff:
             self.files[source_file.file_id] = source_file
 
     def get_project_name(self, path):
-        # just return root_project_name for now
-        for project_name, project in self.all_projects.items():
-            print(f"--- project_name: {project_name}, project_root: {project.project_root}")
+        if self.local_package_dirs is None:
+            packages = self.all_projects[self.root_project_name].packages
+            self.local_package_dirs = []
+            for package_spec in packages.packages:
+                if isinstance(package_spec, LocalPackage):
+                    self.local_package_dirs.append(package_spec.local)
+        if len(self.local_package_dirs) == 0:
+            return self.root_project_name
+
+        # Check whether this change is to a local package
+        input_file_path = pathlib.PurePath(path)
+        input_file_path_parts = input_file_path.parts
+        for local_package_dir in self.local_package_dirs:
+            if local_package_dir in input_file_path_parts:
+                pass
+                # we need the package_name of the local package_dir and
+                # there's currently no way to get it
+
         return self.root_project_name
 
     def get_project_file_types(self, project_name):
