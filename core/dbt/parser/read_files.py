@@ -334,6 +334,8 @@ class ReadFilesFromDiff:
 
     def get_project_name(self, path):
         # just return root_project_name for now
+        for project_name, project in self.all_projects.items():
+            print(f"--- project_name: {project_name}, project_root: {project.project_root}")
         return self.root_project_name
 
     def get_project_file_types(self, project_name):
