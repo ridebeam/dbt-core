@@ -473,7 +473,6 @@ def basic_parsed_seed_object():
         raw_code='',
         unique_id='seed.test.foo',
         fqn=['test', 'seeds', 'foo'],
-        depends_on=MacroDependsOn(),
         database='test_db',
         description='',
         schema='test_schema',

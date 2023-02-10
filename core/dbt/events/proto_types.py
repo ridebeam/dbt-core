@@ -963,21 +963,8 @@ class FinishedRunningStatsMsg(betterproto.Message):
 
 
 @dataclass
-class ParseCmdOut(betterproto.Message):
-    """I001"""
-
-    msg: str = betterproto.string_field(1)
-
-
-@dataclass
-class ParseCmdOutMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "ParseCmdOut" = betterproto.message_field(2)
-
-
-@dataclass
 class InputFileDiffError(betterproto.Message):
-    """I002"""
+    """I001"""
 
     category: str = betterproto.string_field(1)
     file_id: str = betterproto.string_field(2)
@@ -987,6 +974,19 @@ class InputFileDiffError(betterproto.Message):
 class InputFileDiffErrorMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     data: "InputFileDiffError" = betterproto.message_field(2)
+
+
+@dataclass
+class ParsePerfInfoPath(betterproto.Message):
+    """I010"""
+
+    path: str = betterproto.string_field(1)
+
+
+@dataclass
+class ParsePerfInfoPathMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "ParsePerfInfoPath" = betterproto.message_field(2)
 
 
 @dataclass
@@ -2236,6 +2236,19 @@ class MainStackTrace(betterproto.Message):
 class MainStackTraceMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     data: "MainStackTrace" = betterproto.message_field(2)
+
+
+@dataclass
+class SystemErrorRetrievingModTime(betterproto.Message):
+    """Z004"""
+
+    path: str = betterproto.string_field(1)
+
+
+@dataclass
+class SystemErrorRetrievingModTimeMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "SystemErrorRetrievingModTime" = betterproto.message_field(2)
 
 
 @dataclass

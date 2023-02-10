@@ -769,24 +769,24 @@ class FinishedRunningStats(InfoLevel, pt.FinishedRunningStats):
 
 
 @dataclass
-class ParseCmdOut(InfoLevel, pt.ParseCmdOut):
-    def code(self):
-        return "I001"
-
-    def message(self) -> str:
-        return self.msg
-
-
-@dataclass
 class InputFileDiffError(DebugLevel, pt.InputFileDiffError):
     def code(self):
-        return "I002"
+        return "I001"
 
     def message(self) -> str:
         return f"Error processing file diff: {self.category}, {self.file_id}"
 
 
-# Skipping I002, I003, I004, I005, I006, I007, I008, I009, I010
+# Skipping I002, I003, I004, I005, I006, I007, I008, I009
+
+
+@dataclass
+class ParsePerfInfoPath(InfoLevel, pt.ParsePerfInfoPath):
+    def code(self):
+        return "I010"
+
+    def message(self) -> str:
+        return f"Performance info: {self.path}"
 
 
 @dataclass
@@ -2016,33 +2016,6 @@ class Formatting(InfoLevel, pt.Formatting):
 
     def message(self) -> str:
         return self.msg
-
-
-@dataclass
-class ServingDocsPort(InfoLevel, pt.ServingDocsPort):
-    def code(self):
-        return "Z018"
-
-    def message(self) -> str:
-        return f"Serving docs at {self.address}:{self.port}"
-
-
-@dataclass
-class ServingDocsAccessInfo(InfoLevel, pt.ServingDocsAccessInfo):
-    def code(self):
-        return "Z019"
-
-    def message(self) -> str:
-        return f"To access from your browser, navigate to:  http://localhost:{self.port}"
-
-
-@dataclass
-class ServingDocsExitInfo(InfoLevel, pt.ServingDocsExitInfo):
-    def code(self):
-        return "Z020"
-
-    def message(self) -> str:
-        return "Press Ctrl+C to exit."
 
 
 @dataclass
