@@ -2078,13 +2078,6 @@ class PropertyYMLError(CompilationError):
         return msg
 
 
-class PropertyYMLMissingVersionError(PropertyYMLError):
-    def __init__(self, path: str):
-        self.path = path
-        self.issue = f"the yml property file {self.path} is missing a version tag"
-        super().__init__(self.path, self.issue)
-
-
 class PropertyYMLVersionNotIntError(PropertyYMLError):
     def __init__(self, path: str, version: Any):
         self.path = path
