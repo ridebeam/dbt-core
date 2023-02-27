@@ -42,6 +42,7 @@ class TestProject(ContractTestCase):
             'version': '1.0',
             'profile': 'test',
             'project-root': '/usr/src/app',
+            'config-version': 'non-int',
         }
         with self.assertRaises(Exception):
             self.ContractType.from_dict(dct)
