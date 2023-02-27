@@ -63,7 +63,6 @@ from dbt.exceptions import (
     TestConfigError,
     ParsingError,
     PropertyYMLInvalidTagError,
-    PropertyYMLMissingVersionError,
     PropertyYMLVersionNotIntError,
     DbtValidationError,
     YamlLoadError,
@@ -576,10 +575,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
 
 
 def check_format_version(file_path, yaml_dct) -> None:
-    if "version" not in yaml_dct:
-        raise PropertyYMLMissingVersionError(file_path)
-
-    version = yaml_dct["version"]
+    version = yaml_dct.get("version", 2)
     # if it's not an integer, the version is malformed, or not
     # set. Either way, only 'version: 2' is supported.
     if not isinstance(version, int):
