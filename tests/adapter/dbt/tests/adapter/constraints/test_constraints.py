@@ -16,6 +16,8 @@ from dbt.tests.adapter.constraints.fixtures import (
     my_model_wrong_name_sql,
     my_model_data_type_sql,
     model_data_type_schema_yml,
+    my_model_view_wrong_order_sql,
+    my_model_view_wrong_name_sql,
     my_model_with_nulls_sql,
     model_schema_yml,
 )
@@ -284,8 +286,24 @@ class BaseConstraintsRuntimeEnforcement:
         self.assert_expected_error_messages(failing_results[0].message, expected_error_messages)
 
 
-class TestConstraintsColumnsEqual(BaseConstraintsColumnsEqual):
-    pass
+class TestTableConstraintsColumnsEqual(BaseConstraintsColumnsEqual):
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "my_model_wrong_order.sql": my_model_wrong_order_sql,
+            "my_model_wrong_name.sql": my_model_wrong_name_sql,
+            "constraints_schema.yml": model_schema_yml,
+        }
+
+
+class TestViewConstraintsColumnsEqual(BaseConstraintsColumnsEqual):
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "my_model_wrong_order.sql": my_model_view_wrong_order_sql,
+            "my_model_wrong_name.sql": my_model_view_wrong_name_sql,
+            "constraints_schema.yml": model_schema_yml,
+        }
 
 
 class TestConstraintsRuntimeEnforcement(BaseConstraintsRuntimeEnforcement):
