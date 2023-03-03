@@ -11,7 +11,6 @@ from dbt.contracts.files import (
     AnySourceFile,
     SchemaSourceFile,
 )
-from dbt.contracts.project import LocalPackage
 from dbt.config import Project
 from dbt.dataclass_schema import dbtClassMixin
 from dbt.parser.schemas import yaml_from_file, schema_file_keys, check_format_version
@@ -337,24 +336,8 @@ class ReadFilesFromDiff:
             self.files[source_file.file_id] = source_file
 
     def get_project_name(self, path):
-        if self.local_package_dirs is None:
-            packages = self.all_projects[self.root_project_name].packages
-            self.local_package_dirs = []
-            for package_spec in packages.packages:
-                if isinstance(package_spec, LocalPackage):
-                    self.local_package_dirs.append(package_spec.local)
-        if len(self.local_package_dirs) == 0:
-            return self.root_project_name
-
-        # Check whether this change is to a local package
-        input_file_path = pathlib.PurePath(path)
-        input_file_path_parts = input_file_path.parts
-        for local_package_dir in self.local_package_dirs:
-            if local_package_dir in input_file_path_parts:
-                pass
-                # we need the package_name of the local package_dir and
-                # there's currently no way to get it
-
+        # It's not currently possible to recognize any other project files,
+        # and it's an open issue how to handle deps.
         return self.root_project_name
 
     def get_project_file_types(self, project_name):

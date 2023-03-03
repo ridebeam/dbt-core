@@ -262,7 +262,7 @@ class ManifestLoader:
                 file_diff=self.file_diff,
             )
         else:
-            # We're getting files from a file_diff structure
+            # We're getting files from the file system
             file_reader = ReadFilesFromFileSystem(
                 all_projects=self.all_projects,
                 files=self.manifest.files,
