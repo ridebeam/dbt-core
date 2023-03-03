@@ -286,7 +286,7 @@ class BaseConstraintsRuntimeEnforcement:
         self.assert_expected_error_messages(failing_results[0].message, expected_error_messages)
 
 
-class TestTableConstraintsColumnsEqual(BaseConstraintsColumnsEqual):
+class BaseTableConstraintsColumnsEqual(BaseConstraintsColumnsEqual):
     @pytest.fixture(scope="class")
     def models(self):
         return {
@@ -296,7 +296,7 @@ class TestTableConstraintsColumnsEqual(BaseConstraintsColumnsEqual):
         }
 
 
-class TestViewConstraintsColumnsEqual(BaseConstraintsColumnsEqual):
+class BaseViewConstraintsColumnsEqual(BaseConstraintsColumnsEqual):
     @pytest.fixture(scope="class")
     def models(self):
         return {
@@ -304,6 +304,14 @@ class TestViewConstraintsColumnsEqual(BaseConstraintsColumnsEqual):
             "my_model_wrong_name.sql": my_model_view_wrong_name_sql,
             "constraints_schema.yml": model_schema_yml,
         }
+
+
+class TestTableConstraintsColumnsEqual(BaseTableConstraintsColumnsEqual):
+    pass
+
+
+class TestViewConstraintsColumnsEqual(BaseViewConstraintsColumnsEqual):
+    pass
 
 
 class TestConstraintsRuntimeEnforcement(BaseConstraintsRuntimeEnforcement):
