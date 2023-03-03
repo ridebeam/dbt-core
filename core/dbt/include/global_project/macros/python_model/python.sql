@@ -1,12 +1,10 @@
 {% macro resolve_model_name(input_model_name) %}
-
-  {{ return(adapter.dispatch('resolve_model_name', 'dbt')(input_model_name)) }}
+    {{ return(adapter.dispatch('resolve_model_name', 'dbt')(input_model_name)) }}
 {% endmacro %}
 
-{% macro default__resolve_model_name(input_model_name) %}
-
-    return input_model_name | string | replace('"', '\"')
-{% endmacro %}
+{%- macro default__resolve_model_name(input_model_name) -%}
+    {{  input_model_name | string | replace('"', '\"') }}
+{%- endmacro -%}
 
 {% macro build_ref_function(model) %}
 
