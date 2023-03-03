@@ -8,13 +8,13 @@ from pprint import pformat as pf
 from typing import Set, List
 
 from click import Context, get_current_context, BadOptionUsage
-from click.core import ParameterSource
+from click.core import ParameterSource, Command, Group
 
 from dbt.config.profile import read_user_config
 from dbt.contracts.project import UserConfig
 from dbt.helper_types import WarnErrorOptions
-from dbt.config.project import PartialProject
-from dbt.exceptions import DbtProjectError
+from dbt.cli.resolvers import default_project_dir, default_log_path
+
 
 if os.name != "nt":
     # https://bugs.python.org/issue41567
@@ -49,11 +49,31 @@ def convert_config(config_name, config_value):
     # This function should take care of converting the values from config and original
     # set_from_args to the correct type
     ret = config_value
-    if config_name.lower() == "warn_error_options":
+    if config_name.lower() == "warn_error_options" and type(config_value) == dict:
         ret = WarnErrorOptions(
             include=config_value.get("include", []), exclude=config_value.get("exclude", [])
         )
     return ret
+
+
+def args_to_context(args: List[str]) -> Context:
+    """Convert a list of args to a click context with proper hierarchy for dbt commands"""
+    from dbt.cli.main import cli
+
+    cli_ctx = cli.make_context(cli.name, args)
+    # args would get converted during make context
+    if len(args) == 1 and "," in args[0]:
+        args = args[0].split(",")
+    sub_command_name, sub_command, args = cli.resolve_command(cli_ctx, args)
+
+    # handle source and docs group
+    if type(sub_command) == Group:
+        sub_command_name, sub_command, args = sub_command.resolve_command(cli_ctx, args)
+
+    assert type(sub_command) == Command
+    sub_command_ctx = sub_command.make_context(sub_command_name, args)
+    sub_command_ctx.parent = cli_ctx
+    return sub_command_ctx
 
 
 @dataclass(frozen=True)
@@ -130,27 +150,18 @@ class Flags:
         object.__setattr__(self, "WHICH", invoked_subcommand_name or ctx.info_name)
         object.__setattr__(self, "MP_CONTEXT", get_context("spawn"))
 
+        # Apply the lead/follow relationship between some parameters
+        self._override_if_set("USE_COLORS", "USE_COLORS_FILE", params_assigned_from_default)
+        self._override_if_set("LOG_LEVEL", "LOG_LEVEL_FILE", params_assigned_from_default)
+        self._override_if_set("LOG_FORMAT", "LOG_FORMAT_FILE", params_assigned_from_default)
+
         # Default LOG_PATH from PROJECT_DIR, if available.
         if getattr(self, "LOG_PATH", None) is None:
-            log_path = "logs"
-            project_dir = getattr(self, "PROJECT_DIR", None)
-            # If available, set LOG_PATH from log-path in dbt_project.yml
-            # Known limitations:
-            #  1. Using PartialProject here, so no jinja rendering of log-path.
-            #  2. Programmatic invocations of the cli via dbtRunner may pass a Project object directly,
-            #     which is not being used here to extract log-path.
-            if project_dir:
-                try:
-                    partial = PartialProject.from_project_root(
-                        project_dir, verify_version=getattr(self, "VERSION_CHECK", True)
-                    )
-                    log_path = str(partial.project_dict.get("log-path", log_path))
-                except DbtProjectError:
-                    pass
+            project_dir = getattr(self, "PROJECT_DIR", default_project_dir())
+            version_check = getattr(self, "VERSION_CHECK", True)
+            object.__setattr__(self, "LOG_PATH", default_log_path(project_dir, version_check))
 
-            object.__setattr__(self, "LOG_PATH", log_path)
-
-        # Support console DO NOT TRACK initiave
+        # Support console DO NOT TRACK initiative
         if os.getenv("DO_NOT_TRACK", "").lower() in ("1", "t", "true", "y", "yes"):
             object.__setattr__(self, "SEND_ANONYMOUS_USAGE_STATS", False)
 
@@ -165,6 +176,12 @@ class Flags:
         )
         for param in params:
             object.__setattr__(self, param.lower(), getattr(self, param))
+
+    # If the value of the lead parameter was set explicitly, apply the value to follow,
+    # unless follow was also set explicitly.
+    def _override_if_set(self, lead: str, follow: str, defaulted: Set[str]) -> None:
+        if lead.lower() not in defaulted and follow.lower() in defaulted:
+            object.__setattr__(self, follow.upper(), getattr(self, lead.upper(), None))
 
     def __str__(self) -> str:
         return str(pf(self.__dict__))

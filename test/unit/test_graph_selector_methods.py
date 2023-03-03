@@ -14,6 +14,7 @@ from dbt.contracts.graph.nodes import (
     ModelNode,
     Exposure,
     Metric,
+    Group,
     SeedNode,
     SingularTestNode,
     GenericTestNode,
@@ -23,13 +24,14 @@ from dbt.contracts.graph.nodes import (
     ColumnInfo,
 )
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.graph.unparsed import ExposureType, ExposureOwner, MetricFilter,MetricTime
+from dbt.contracts.graph.unparsed import ExposureType, Owner, MetricFilter,MetricTime
 from dbt.contracts.state import PreviousState
 from dbt.node_types import NodeType
 from dbt.graph.selector_methods import (
     MethodManager,
     QualifiedNameSelectorMethod,
     TagSelectorMethod,
+    GroupSelectorMethod,
     SourceSelectorMethod,
     PathSelectorMethod,
     FileSelectorMethod,
@@ -330,7 +332,7 @@ def make_exposure(pkg, name, path=None, fqn_extras=None, owner=None):
         fqn_extras = []
 
     if owner is None:
-        owner = ExposureOwner(email='test@example.com')
+        owner = Owner(email='test@example.com')
 
     fqn = [pkg, 'exposures'] + fqn_extras + [name]
     return Exposure(
@@ -353,7 +355,7 @@ def make_metric(pkg, name, path=None):
     return Metric(
         name=name,
         resource_type=NodeType.Metric,
-        path='schema.yml',
+        path=path,
         package_name=pkg,
         original_file_path=path,
         unique_id=f'metric.{pkg}.{name}',
@@ -376,6 +378,20 @@ def make_metric(pkg, name, path=None):
         tags=['okrs'],
     )
 
+
+def make_group(pkg, name, path=None):
+    if path is None:
+        path = 'schema.yml'
+
+    return Group(
+        name=name,
+        resource_type=NodeType.Group,
+        path=path,
+        package_name=pkg,
+        original_file_path=path,
+        unique_id=f'group.{pkg}.{name}',
+        owner='email@gmail.com',
+    )
 
 @pytest.fixture
 def macro_test_unique():
@@ -638,6 +654,7 @@ def manifest(seed, source, ephemeral_model, view_model, table_model, table_model
         metrics={},
         disabled=[],
         selectors={},
+        groups={},
     )
     return manifest
 
@@ -675,6 +692,21 @@ def test_select_tag(manifest):
     assert search_manifest_using_method(manifest, method, 'uses_ephemeral') == {
         'view_model', 'table_model'}
     assert not search_manifest_using_method(manifest, method, 'missing')
+
+
+def test_select_group(manifest, view_model):
+    group_name = 'my_group'
+    group = make_group('test', group_name)
+    manifest.groups[group.unique_id] = group
+    change_node(manifest, view_model.replace(config={'materialized': 'view', 'group': group_name},))
+    methods = MethodManager(manifest, None)
+    method = methods.get_method('group', [])
+    assert isinstance(method, GroupSelectorMethod)
+    assert method.arguments == []
+
+    assert search_manifest_using_method(manifest, method, group_name) == {
+        'view_model'}
+    assert not search_manifest_using_method(manifest, method, 'not_my_group')
 
 
 def test_select_source(manifest):

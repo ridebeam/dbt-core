@@ -264,7 +264,7 @@ class ProfileWrittenWithTargetTemplateYAML(betterproto.Message):
 @dataclass
 class ProfileWrittenWithTargetTemplateYAMLMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
-    data: "ProfileWrittenWithTargetTemplateYAMLMsg" = betterproto.message_field(2)
+    data: "ProfileWrittenWithTargetTemplateYAML" = betterproto.message_field(2)
 
 
 @dataclass
@@ -974,6 +974,34 @@ class InputFileDiffError(betterproto.Message):
 class InputFileDiffErrorMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     data: "InputFileDiffError" = betterproto.message_field(2)
+
+
+class InvalidValueForField(betterproto.Message):
+    """I008"""
+
+    field_name: str = betterproto.string_field(1)
+    field_value: str = betterproto.string_field(2)
+
+
+@dataclass
+class InvalidValueForFieldMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "InvalidValueForField" = betterproto.message_field(2)
+
+
+@dataclass
+class ValidationWarning(betterproto.Message):
+    """I009"""
+
+    resource_type: str = betterproto.string_field(1)
+    field_name: str = betterproto.string_field(2)
+    node_name: str = betterproto.string_field(3)
+
+
+@dataclass
+class ValidationWarningMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "ValidationWarning" = betterproto.message_field(2)
 
 
 @dataclass
@@ -1831,7 +1859,7 @@ class LogModelResult(betterproto.Message):
     status: str = betterproto.string_field(3)
     index: int = betterproto.int32_field(4)
     total: int = betterproto.int32_field(5)
-    execution_time: int = betterproto.int32_field(6)
+    execution_time: float = betterproto.float_field(6)
 
 
 @dataclass
