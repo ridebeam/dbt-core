@@ -161,8 +161,8 @@ my_model_view_wrong_order_sql = """
 }}
 
 select
-  1 as color,
-  'blue' as id,
+  'blue' as color,
+  1 as id,
   cast('2019-01-01' as date) as date_day
 """
 
