@@ -1,9 +1,19 @@
+{% macro resolve_model_name(input_model_name) %}
+
+  {{ return(adapter.dispatch('resolve_model_name', 'dbt')(input_model_name)) }}
+{% endmacro %}
+
+{% macro default__resolve_model_name(input_model_name) %}
+
+    return input_model_name | string | replace('"', '\"')
+{% endmacro %}
+
 {% macro build_ref_function(model) %}
 
     {%- set ref_dict = {} -%}
     {%- for _ref in model.refs -%}
         {%- set resolved = ref(*_ref) -%}
-        {%- do ref_dict.update({_ref | join("."): resolved | string | replace('"', '\"')}) -%}
+        {%- do ref_dict.update({_ref | join("."): resolve_model_name(resolved)}) -%}
     {%- endfor -%}
 
 def ref(*args,dbt_load_df_function):
@@ -18,7 +28,7 @@ def ref(*args,dbt_load_df_function):
     {%- set source_dict = {} -%}
     {%- for _source in model.sources -%}
         {%- set resolved = source(*_source) -%}
-        {%- do source_dict.update({_source | join("."): resolved | string | replace('"', '\"')}) -%}
+        {%- do source_dict.update({_source | join("."): resolve_model_name(resolved)}) -%}
     {%- endfor -%}
 
 def source(*args, dbt_load_df_function):
@@ -65,7 +75,7 @@ class this:
     database = "{{ this.database }}"
     schema = "{{ this.schema }}"
     identifier = "{{ this.identifier }}"
-    {% set this_relation_name = this | string | replace('"', '\\"') %}
+    {% set this_relation_name = resolve_model_name(this) %}
     def __repr__(self):
         return "{{ this_relation_name  }}"
 
