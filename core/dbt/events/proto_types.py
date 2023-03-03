@@ -976,6 +976,7 @@ class InputFileDiffErrorMsg(betterproto.Message):
     data: "InputFileDiffError" = betterproto.message_field(2)
 
 
+@dataclass
 class InvalidValueForField(betterproto.Message):
     """I008"""
 
