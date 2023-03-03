@@ -70,8 +70,10 @@ def load_source_file(
             skip_loading_schema_file = True
 
     if not skip_loading_schema_file:
-        file_contents = load_file_contents(path.absolute_path, strip=False)
-        source_file.contents = file_contents.strip()
+        # We strip the file_contents before generating the checksum because we want
+        # the checksum to match the stored file contents
+        file_contents = load_file_contents(path.absolute_path, strip=True)
+        source_file.contents = file_contents
         source_file.checksum = FileHash.from_contents(source_file.contents)
 
     if parse_file_type == ParseFileType.Schema and source_file.contents:
@@ -117,7 +119,7 @@ def load_seed_source_file(match: FilePath, project_name) -> SourceFile:
         # We don't want to calculate a hash of this file. Use the path.
         source_file = SourceFile.big_seed(match)
     else:
-        file_contents = load_file_contents(match.absolute_path, strip=False)
+        file_contents = load_file_contents(match.absolute_path, strip=True)
         checksum = FileHash.from_contents(file_contents)
         source_file = SourceFile(path=match, checksum=checksum)
         source_file.contents = ""
