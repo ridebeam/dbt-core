@@ -51,7 +51,7 @@ setup(
         "betterproto==1.2.5",
         "click>=7.0,<9",
         "colorama>=0.3.9,<0.4.7",
-        "hologram>=0.0.14,<=0.0.15",
+        "hologram>=0.0.14,<=0.0.16",
         "isodate>=0.6,<0.7",
         "logbook>=1.5,<1.6",
         "mashumaro[msgpack]==3.3.1",
